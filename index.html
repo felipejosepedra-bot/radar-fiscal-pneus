@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Central Fiscal Nordeste — Pneus & Logística</title>
+  <style>
+    :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8; --accent: #38bdf8; --border: #334155; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; line-height: 1.5; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; }
+    h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; }
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    select, input { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; font-size: 0.8rem; }
+    .badge { background: #334155; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    .badge.uf { background: #0284c7; }
+    .badge.alto { background: #dc2626; }
+    .badge.medio { background: #d97706; }
+    .card h2 { margin: 0 0 8px; font-size: 1.15rem; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; font-size: 0.9rem; }
+    .box { background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+    a { color: var(--accent); }
+    .empty { text-align: center; color: var(--muted); padding: 40px; background: var(--card); border-radius: 10px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Central de Inteligência Fiscal — Nordeste</h1>
+      <div class="subtitle">Monitoramento diário: Comércio de Pneus & Logística (AL, BA, CE, MA, PB, PE, PI, RN, SE)</div>
+    </header>
+
+    <div class="filters">
+      <select id="ufFilter">
+        <option value="">Todos os Estados (NE)</option>
+        <option value="PB">Paraíba (PB)</option>
+        <option value="PE">Pernambuco (PE)</option>
+        <option value="CE">Ceará (CE)</option>
+        <option value="BA">Bahia (BA)</option>
+        <option value="RN">Rio Grande do Norte (RN)</option>
+        <option value="AL">Alagoas (AL)</option>
+        <option value="SE">Sergipe (SE)</option>
+        <option value="MA">Maranhão (MA)</option>
+        <option value="PI">Piauí (PI)</option>
+      </select>
+      <input type="text" id="searchInput" placeholder="Buscar por norma, NCM, tema..." />
+    </div>
+
+    <div id="lista"></div>
+  </div>
+
+  <script>
+    let dados = [];
+    async function carregar() {
+      try {
+        const res = await fetch('atualizacoes.json?t=' + Date.now());
+        const json = await res.json();
+        dados = (json.atualizacoes || []).reverse();
+        renderizar();
+      } catch (e) {
+        document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma atualização carregada ainda.</div>';
+      }
+    }
+
+    function renderizar() {
+      const uf = document.getElementById('ufFilter').value;
+      const termo = document.getElementById('searchInput').value.toLowerCase();
+      const filtrados = dados.filter(item => {
+        const matchUf = !uf || (item.uf && item.uf.includes(uf));
+        const matchTexto = !termo || JSON.stringify(item).toLowerCase().includes(termo);
+        return matchUf && matchTexto;
+      });
+
+      const container = document.getElementById('lista');
+      if (!filtrados.length) {
+        container.innerHTML = '<div class="empty">Nenhuma atualização fiscal material registrada para este filtro.</div>';
+        return;
+      }
+
+      container.innerHTML = filtrados.map(item => `
+        <div class="card">
+          <div class="badges">
+            ${(item.uf || []).map(u => `<span class="badge uf">${u}</span>`).join('')}
+            <span class="badge">${item.tipo || 'Ato'}</span>
+            <span class="badge">Pub: ${item.publicacao || '-'}</span>
+            ${item.vigencia ? `<span class="badge">Vigência: ${item.vigencia}</span>` : ''}
+          </div>
+          <h2>${item.titulo}</h2>
+          <p>${item.resumo}</p>
+          <div class="grid">
+            <div class="box"><strong>Antes:</strong><br>${item.antes || 'Não informado'}</div>
+            <div class="box"><strong>Depois:</strong><br>${item.depois || 'Não informado'}</div>
+          </div>
+          <p style="margin-top:12px;"><strong>Providências:</strong> ${item.providencias || '-'}</p>
+          <div>${(item.fontes || []).map(f => `<a href="${f.url}" target="_blank">${f.titulo || 'Fonte Oficial'}</a>`).join(' | ')}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('ufFilter').addEventListener('change', renderizar);
+    document.getElementById('searchInput').addEventListener('input', renderizar);
+    carregar();
+  </script>
+</body>
+</html>
